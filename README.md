@@ -15,3 +15,6 @@ Output is in the form of a .root file containing generated histograms along with
 
 1. get_features.C:\
 Finds features of inputed histograms. Secifically, find local maxima, minima and locations where dydx=0 and d2ydx2=0.c
+
+2. find_mpv_KNN.R\
+Uses KNN to find MIP MPV from histogram features.
