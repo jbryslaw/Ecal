@@ -14,4 +14,4 @@ Default number of trials to be divided among training and testing: 200000\
 Output is in the form of a .root file containing generated histograms along with original generating functions.
 
 1. get_features.C:\
-Finds features of inputted histograms. Secifically, find local maxima, minima and locations where dydx=0 and d2ydx2=0.
+Finds features of inputed histograms. Secifically, find local maxima, minima and locations where dydx=0 and d2ydx2=0.c
