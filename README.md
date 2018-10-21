@@ -13,7 +13,7 @@ with a random square cutout at low x to simulate zero-suppression.\
 Default number of trials to be divided among training and testing: 200000\
 Output is in the form of a .root file containing generated histograms along with original generating functions.
 
-#1. get_features.C:\
+1. get_features.C:\
 Finds features of inputed histograms. Secifically, find local maxima, minima and locations where dydx=0 and d2ydx2=0.c
 
 2. find_mpv_KNN.R\
