@@ -1,7 +1,7 @@
 # Ecal
 Calibration of Electromagnetic Calorimeters Using Machine Learning Methods
 
-+ generate_data.C
+1. generate_data.C
 Generates test and training data with Monte Carlo assuming signal is of the form:
 sig(x) = Landau_0(mu,sigma,x) + Landau_1(Landau_0,x)
 
