@@ -10,4 +10,4 @@ Bb(x) = Gauss(x)+exp(x)
 
 with a random square cutout at low x to simulate zero-suppression.
 
-De
+Default number of trials to be divided among training and testing: 200000
