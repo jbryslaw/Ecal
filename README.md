@@ -5,8 +5,7 @@ Please see slides.pdf for a more detailed explanation.
 
 0. generate_data.C:  
 Generates test and training data with Monte Carlo assuming signal is of the form:
-sig(x) = Landau_0(mu,sigma,x) + Landau_1(Landau_0,x)
-
+sig(x) = Landau_0(mu,sigma,x) + Landau_1(Landau_0,x)\
 and background is of the form:\
 Bg(x) = Gauss(x)+exp(x)\
 with a random square cutout at low x to simulate zero-suppression.\
