@@ -58,7 +58,6 @@
 #include "TFormula.h"
 #include "TArrow.h"
 
-
 #include "Fit/FitResult.h"
 #include "TFitResult.h"
 #include "TFitResultPtr.h"
@@ -70,22 +69,26 @@
 
 using namespace std;
 
-
+bool b_draw = true;//false; // draw output histograms?
+  
 void get_features()
 {
   TH1D * h_minima   = new TH1D("h_minima","h_minima",50,0,50);
   TH1D * h_maxima   = new TH1D("h_maxima","h_maxima",50,0,50);
   TH1D * h_dxdy0    = new TH1D("h_dxdy0","h_dxdy0",50,0,50);
   TH1D * h_d2ydx2_0 = new TH1D("h_d2ydx2_0","h_d2ydx2_0",50,0,50);
-  
+
+  // Write Features to txt file for R
   ofstream ofs_out;
-  //ofs_out.open(Form("out_all_%s.txt",c_name));
-    
+  //ofs_out.open("out_all.txt");
+  ofs_out.open("demo.txt");
+  
   // find all minima and maxima
   TFile * tf_in = new TFile("training_data.root","READ");
 
   // Number of historgrams to read
-  int i_N_histos = 200;//100000;
+  int i_N_histos = 100000;
+  if(b_draw) i_N_histos = 2;
   if(i_N_histos == 0) return;
 
   // set fit function
@@ -98,22 +101,35 @@ void get_features()
   bool b_draw_derivatives_on_main_plot = true;//false;
 
   for(int ijk = 0; ijk < i_N_histos; ijk++)
-    {            
+    {
+      if(b_draw&&(ijk==0)) ijk+=2;
+      // Load Histogram from data file
       TH1D * h_energy = (TH1D*) tf_in -> Get(Form("h_energy_%d",ijk));
       if(!h_energy) return;
-      
+      h_energy -> SetXTitle("Charged Deposited in Sensor");
+      h_energy -> SetYTitle("Counts");
+
+
+      //Get the Generating Function, for the training response
       TF1 * f1 = (TF1*) tf_in -> Get(Form("f1_%d",ijk));
 
+      // Get Response MIP MPV
       double d_training_response = f1 -> GetParameter(1);
       
+      // Draw Histogram
       TCanvas * TC_energy = new TCanvas(Form("TC_energy_%d",ijk),"TC_energy");
       TC_energy -> cd();
       gPad -> SetLogy(); gPad->SetGridx(); gPad->SetGridy();  h_energy->Draw("HIST");// f1 -> Draw("same");
 
+      // make a legend
+      TLegend * TL_legend = new TLegend(0.55,0.525,0.99,0.935);
+      //            TLegend * TL_legend = new TLegend(0.55,0.525,0.85,0.935);
+      //TL_legend -> AddEntry(h_energy,"SensorEnergy Deposition");
+
+
       //////////////////////////////////////////////////////////
       /////// Local Minima and Maxima
-      //////////////////////////////////////////////////////////
-      
+      //////////////////////////////////////////////////////////      
       double  d_adc_start = 80;
       double  d_adc_end   = 0;
       int iBin_adc_start = h_energy -> FindFixBin(d_adc_start);
@@ -142,7 +158,6 @@ void get_features()
 	  double a5_pre_content[5] = {0.,0.,0.,0.,0.};
 	  double a5_post_content[5] = {0.,0.,0.,0.,0.};
 
-
 	  int i_num_check = 5;
 	  for(int jkl = 0; jkl < i_num_check;jkl++)
 	    {	      
@@ -150,7 +165,6 @@ void get_features()
 	      else { b_min = false; b_max = false;}
 	      if((iBin+1+jkl) < h_energy ->GetNbinsX()) a5_post_content[jkl] = h_energy -> GetBinContent(iBin+1+jkl);
 	      else { b_min = false; b_max = false;}
-
 
 	      if(a5_pre_content[jkl] < d_content) b_min = false;
 	      if(a5_pre_content[jkl] > d_content) b_max = false;
@@ -211,6 +225,9 @@ void get_features()
 	  TL_minima -> SetFillColor(kGreen);
 
 	  TL_minima -> Draw();
+
+	  if(k==0) TL_legend -> AddEntry(TL_minima ,"Minima");
+	  
 	  a_ptr_arrows.push_back(TL_minima);
 	  //find the minimum closest to the candidate mean
 	  if( fabs(d_center-d_mean) < fabs(d_min0_dist) )
@@ -236,7 +253,7 @@ void get_features()
 	  TL_maxima -> SetFillColor(kBlue);
 	  TL_maxima -> Draw();
 	  a_ptr_arrows.push_back(TL_maxima);
-
+	  if(k==0) TL_legend -> AddEntry(TL_maxima ,"Maxima");
 	}//for(int k = 0; k< v_iBin_maxima.size(); k++)
 
       TArrow * TL_mean = new TArrow(d_mean,d_max,d_mean,d_max+(d_max*0.1),0.015,"|>");
@@ -317,15 +334,19 @@ void get_features()
 	  
 	  TArrow * TL_dxdy0 = new TArrow(d_center,d_content-(d_content*0.1),d_center,d_content,0.015,"|>");
 	  TL_dxdy0 -> SetLineColor(kRed);
-	  TL_dxdy0 -> SetFillColor(kRed);
+	  TL_dxdy0 -> SetFillColor(kRed);	  
 
 	  TC_dydx  -> cd();
 	  TL_dxdy0 -> Draw();
 
+	  //	  if(jkl==0) TL_legend -> AddEntry(TL_dxdy0 ,"#frac{dy}{dx}=0");
+	  if(jkl==0) TL_legend -> AddEntry(TL_dxdy0 ,"dy/dx=0");
+
 	  if(b_draw_derivatives_on_main_plot)
 	    {
 	      TC_energy  -> cd();
-	      TL_dxdy0 -> DrawArrow(d_center+1,d_Econtent-(d_Econtent*0.1),d_center+1,d_Econtent);
+	      //TL_dxdy0 -> DrawArrow(d_center+1,d_Econtent-(d_Econtent*0.1),d_center+1,d_Econtent);
+	      TL_dxdy0 -> DrawArrow(d_center-1,d_Econtent-(d_Econtent*0.1),d_center-1,d_Econtent);
 	    }//if(b_draw_derivatives_on_main_plot)
 
 	  a_ptr_arrows.push_back(TL_dxdy0);
@@ -405,18 +426,16 @@ void get_features()
 	  TC_d2ydx2  -> cd();
 	  TL_d2ydx2_0 -> Draw();
 
+	  //if(jkl==0) TL_legend -> AddEntry(TL_d2ydx2_0 ,"#frac{d^{2}y}{dx^{2}}=0");
+	  if(jkl==0) TL_legend -> AddEntry(TL_d2ydx2_0 ,"d^{2}y/dx^{2}=0");
+
 	  if(b_draw_derivatives_on_main_plot)
 	    {
 	      TC_energy  -> cd();
 	      TL_d2ydx2_0 -> DrawArrow(d_center-1,d_Econtent-(d_Econtent*0.1),d_center-1,d_Econtent);
 	    }//if(b_draw_derivatives_on_main_plot)
 	  a_ptr_arrows.push_back(TL_d2ydx2_0);
-
-
-
 	}//for(int jkl = 0; jkl < v_iBin_d2ydx2_0.size(); jkl++)
-
-
       ////////////////////////////////////////////////
       /// END local 2nd dervatives
       ////////////////////////////////////////////////
@@ -426,7 +445,6 @@ void get_features()
       h_dxdy0    ->Fill(v_iBin_dxdy0.size());
       h_d2ydx2_0 ->Fill(v_iBin_d2ydx2_0.size());
 
-      
       // cout<<" Num Minima: "<<v_iBin_minima.size()   <<endl;
       // cout<<" Num Maxima: "<<v_iBin_maxima.size()   <<endl;
       // cout<<" Num dydx:   "<<v_iBin_dxdy0.size()    <<endl;
@@ -551,19 +569,25 @@ void get_features()
       ofs_out<<endl;
 
       //delete
-      delete h_energy;
-      delete f1;
-      delete TC_energy;
-      delete h_dydx;
-      delete TC_dydx;
-      delete h_d2ydx2;
-      delete TC_d2ydx2;
-
-      for(int jkl = 0; jkl < a_ptr_arrows.size(); jkl++)
+      if(!b_draw)
 	{
-	  delete  a_ptr_arrows[jkl];
-	}//for(int jkl = 0; jkl < a_ptr_arrows.size(); jkl++)
-      
+	  delete h_energy;
+	  delete f1;
+	  delete TC_energy;
+	  delete h_dydx;
+	  delete TC_dydx;
+	  delete h_d2ydx2;
+	  delete TC_d2ydx2;
+
+	  for(int jkl = 0; jkl < a_ptr_arrows.size(); jkl++)
+	    {
+	      delete  a_ptr_arrows[jkl];
+	    }//for(int jkl = 0; jkl < a_ptr_arrows.size(); jkl++)
+	}//if(!b_draw)
+      else
+	{
+	        TL_legend -> Draw();
+	}// else (!b_draw)
       //cout<<" ================================ "<<endl;
     }//for(int ijk = 0; ijk < i_N_histos; ijk++)
 
@@ -586,7 +610,7 @@ int main(int argc, char * argv[]){
   gSystem->Load("libTree");
   TApplication App("Analysis", &argc, argv);
 
-  gROOT->SetBatch(kTRUE);
+  if(!b_draw) gROOT->SetBatch(kTRUE);
   get_features();
   
   //App.Terminate();
