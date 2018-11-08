@@ -92,24 +92,25 @@ void get_features()
   if(i_N_histos == 0) return;
 
   // set fit function
-  const char *la0  = "[3]*TMath::Landau(x,[1],[2],0)";
-  const char *la1  = "(1-[3])*TMath::Landau(x,2*[1]+1.4*[2],2.0*[2],0)";
-  const char *c_bg = "[4]*exp(-[5]*x)+[6]*exp(-0.5*((x-[7])/[8])**2)";
-
-  TFormula * tform_s_bg = new TFormula("tform_s_bg", Form("[0]*(%s+%s)+%s",la0,la1,c_bg));
+  // const char *la0  = "[3]*TMath::Landau(x,[1],[2],0)";
+  // const char *la1  = "(1-[3])*TMath::Landau(x,2*[1]+1.4*[2],2.0*[2],0)";
+  // const char *c_bg = "[4]*exp(-[5]*x)+[6]*exp(-0.5*((x-[7])/[8])**2)";
+  // TFormula * tform_s_bg = new TFormula("tform_s_bg", Form("[0]*(%s+%s)+%s",la0,la1,c_bg));
 
   bool b_draw_derivatives_on_main_plot = true;//false;
 
+  // Loop: Read Historgram
   for(int ijk = 0; ijk < i_N_histos; ijk++)
     {
-      if(b_draw&&(ijk==0)) ijk+=2;
+      if(b_draw&&(ijk==0)) ijk+=2; // if drawing, start with a good example
+      
       // Load Histogram from data file
       TH1D * h_energy = (TH1D*) tf_in -> Get(Form("h_energy_%d",ijk));
       if(!h_energy) return;
       h_energy -> SetXTitle("Charged Deposited in Sensor");
       h_energy -> SetYTitle("Counts");
 
-      //Get the Generating Function, for the training response
+      //Load the Generating Function, for the training response
       TF1 * f1 = (TF1*) tf_in -> Get(Form("f1_%d",ijk));
 
       // Get Response MIP MPV
@@ -137,27 +138,30 @@ void get_features()
       double d_tmp_max = -9999.0;
       bool b_pos_slope = 0;
 
-      int i_max0 = -9999;
-      double d_max0_dist = -9999.0;
-
       vector<int> v_iBin_minima;
       vector<int> v_iBin_maxima;
       vector<double> v_pos_maxima;
       vector<double> v_pos_minima;
-      for(int iBin = 1; iBin < iBin_adc_start; iBin ++)
+      for(int iBin = 1; iBin < 80; iBin ++)
 	{
+	  // Get bin Center and height
 	  double d_center  = h_energy -> GetBinCenter(iBin);
 	  double d_content = h_energy -> GetBinContent(iBin);
 
-	  bool b_min = true;
-	  bool b_max = true;
 
+	  //Define Max, Min as 5 bins lower, higher on either side
+	  //  so statistical fluctuations aren't set as max,min
 	  double a5_pre_content[5] = {0.,0.,0.,0.,0.};
 	  double a5_post_content[5] = {0.,0.,0.,0.,0.};
 
+	  // set flags to true to start
+	  //    and then set to false if any of the side bins are too high,low
+	  bool b_min = true;
+	  bool b_max = true;
 	  int i_num_check = 5;
 	  for(int jkl = 0; jkl < i_num_check;jkl++)
-	    {	      
+	    {
+	      // just check that bin isn't near the very edge of the histogram
 	      if((iBin-1-jkl) > 0) a5_pre_content[jkl]  = h_energy -> GetBinContent(iBin-1-jkl);
 	      else { b_min = false; b_max = false;}
 	      if((iBin+1+jkl) < h_energy ->GetNbinsX()) a5_post_content[jkl] = h_energy -> GetBinContent(iBin+1+jkl);
@@ -169,48 +173,29 @@ void get_features()
 	      if(a5_post_content[jkl] < d_content) b_min = false;
 	      if(a5_post_content[jkl] > d_content) b_max = false;
 
-	      if(jkl==0) continue;
+	      if(jkl==0) continue;// if the bins right nextdoor are the same, let it go
 	      if(a5_pre_content[jkl]  == d_content) b_max = false;
 	      if(a5_post_content[jkl] == d_content) b_min = false;   
-		
 	    }//for(int jkl = 0; jkl < 5;jkl++)
-	      
-	  double d_pre_center  = h_energy -> GetBinCenter(iBin-1);
-	  double d_pre_content = h_energy -> GetBinContent(iBin-1);
-	  int iBin_pre = iBin-1;
 
-	  double d_next_center  = h_energy -> GetBinCenter(iBin+1);
-	  double d_next_content = h_energy -> GetBinContent(iBin+1);
-	  int iBin_next = iBin+1;
-    
-	  if(iBin == iBin_adc_start) continue;
-	    
+	  //add maxima, minima to vectors
 	  if(b_max)
 	    {
 	      v_iBin_maxima.push_back(iBin);
 	      v_pos_maxima.push_back(d_center);
-	      if( fabs(d_center-0) < fabs(d_max0_dist) )
-		{
-		  i_max0 = iBin;
-		  d_max0_dist = fabs(d_center-0);
-		}//if( fabs(d_center-0) < fabs(d_max0_dist) )
-	    }//if((d_pre_content < d_content) && (d_next_content < d_content) )
+	    }//if max
 	  if(b_min)
 	    { 
 	      v_iBin_minima.push_back(iBin);
 	      v_pos_minima.push_back(d_center);
 	      //cout<<"          Minima: "<<d_center<<endl; 
-	    } //if((d_pre_content > d_content) && (d_next_content > d_content) ) 
+	    } //if min
 	}//for(int iBin = iBin_adc_start; iBin > iBin_adc_end; iBin --)
-      
-      double d_mean = h_energy -> GetBinCenter(i_max0);
-      double d_max  = h_energy -> GetBinContent(i_max0);
 
-      int i_min0 = -9999;
-      double d_min0_dist = -9999;   
+      // draw arrows for minima
       vector<TArrow*> a_ptr_arrows;
       for(int k = 0; k< v_iBin_minima.size(); k++)
-	{
+	{	  
 	  double d_center  = h_energy -> GetBinCenter(v_iBin_minima[k]);
 	  double d_content = h_energy -> GetBinContent(v_iBin_minima[k]);
 	  // TLine * TL_minima = new TLine(d_center,0.0,d_center,h_energy->GetMaximum());
@@ -223,20 +208,12 @@ void get_features()
 
 	  TL_minima -> Draw();
 
-	  if(k==0) TL_legend -> AddEntry(TL_minima ,"Minima");
-	  
+	  // Add Arrow to Legend
+	  if(k==0) TL_legend -> AddEntry(TL_minima ,"Minima");	  
 	  a_ptr_arrows.push_back(TL_minima);
-	  //find the minimum closest to the candidate mean
-	  if( fabs(d_center-d_mean) < fabs(d_min0_dist) )
-	    {
-	      i_min0 = k;
-	      //cout<<" -"<<d_center<<" "<<d_mean<<endl;
-	      d_min0_dist = fabs(d_center-d_mean);
-	    }//if( fabs(d_center-0) < fabs(d_min0_dist) )	  
 	}//for(int k = 0; k< v_iBin_minima.size(); k++)
 
-      double d_min = h_energy -> GetBinContent(i_min0);
-      
+      // draw arrows for maxima
       for(int k = 0; k< v_iBin_maxima.size(); k++)
 	{
 	  double d_center  = h_energy -> GetBinCenter(v_iBin_maxima[k]);
@@ -253,26 +230,23 @@ void get_features()
 	  if(k==0) TL_legend -> AddEntry(TL_maxima ,"Maxima");
 	}//for(int k = 0; k< v_iBin_maxima.size(); k++)
 
-      TArrow * TL_mean = new TArrow(d_mean,d_max,d_mean,d_max+(d_max*0.1),0.015,"|>");
-      TL_mean -> SetLineColor(kBlue);
-      TL_mean -> SetFillColor(kBlue);
-      TL_mean -> Draw();
-      a_ptr_arrows.push_back(TL_mean);
-
       //////////////////////////////////////////////////////////
       /// END Local Minima and Maxima
       //////////////////////////////////////////////////////////
 
       ////////////////////////////////////////////////
-      /// /// local dervatives
+      /// /// local derivatives
       ////////////////////////////////////////////////
-
-      // TH1D * h_dydx = (TH1D*) h_energy -> Clone(Form("h_dydx_%d",ijk));
-      // h_dydx -> Reset();
+      // Save Histogram of derivatives
       TH1D * h_dydx = new TH1D(Form("h_dydx_%d",ijk),"dydx",150,0,150);      
+
+      // Loop over bins from right to left
       for(int iBin = iBin_adc_start; iBin > iBin_adc_end; iBin --)
 	{
+	  // Skip edges of histogram
 	  if((iBin <2)||(iBin > (h_energy->GetNbinsX()+1)) ) continue;
+
+	  // Calculate derivative
 	  double dx = h_energy -> GetBinWidth(1);
 	  double d_center  = h_energy -> GetBinCenter(iBin);
 	  double d_content = h_energy -> GetBinContent(iBin);
@@ -280,23 +254,25 @@ void get_features()
 	  double d_pre_content  = h_energy -> GetBinContent(iBin-11);
 	  double d_next_content  = h_energy -> GetBinContent(iBin+1);
 
-	  //	    double dydx = (d_next_content-d_pre_content) / (2*dx);
-	  //	    double dydx = (d_content-d_pre_content) / (dx);
+	  // Appears to work best just using the next bin over
 	  double dydx = (d_next_content-d_content) / (dx);
 	  // h_dydx -> Fill(dydx);
 	  h_dydx -> SetBinContent(iBin,dydx);
 	    
 	}//for(int iBin = iBin_adc_start; iBin > iBin_adc_end; iBin --)
+
+      // Draw Derivatives
       TCanvas * TC_dydx = new TCanvas(Form("TC_dydx_%d",ijk),"TC_dydx");
       TC_dydx -> cd();
       gPad->SetGridx(); gPad->SetGridy();
       h_dydx -> Smooth();
       h_dydx -> Draw("HIST");
 
-      // find dydx = 0
+      // find dy/dx = 0
       vector<int> v_iBin_dxdy0;
       for(int iBin = 1; iBin < (h_dydx -> GetNbinsX()-1); iBin++)
 	{
+	  // start assuming its not 0
 	  bool b_dydx0 = false;
 	  double d_center  = h_dydx -> GetBinCenter(iBin);
 	  double d_content = h_dydx -> GetBinContent(iBin);
@@ -304,6 +280,7 @@ void get_features()
 	  double d_pre_content  = h_dydx -> GetBinContent(iBin-1);
 	  double d_next_content  = h_dydx -> GetBinContent(iBin+1);  
 
+	  // Appears to work best if this bins is compared to the next bin
 	  if((d_content < 0) && (d_pre_content > 0)) b_dydx0 = true;
 	  if((d_content > 0) && (d_pre_content < 0)) b_dydx0 = true;
 
@@ -314,13 +291,11 @@ void get_features()
 	  // if((d_pre_content > 0) && (d_content < 0)) b_dydx0 = true;
 
 	  if(!b_dydx0) continue;
-	  // cout<<" dxdy0: "<<d_pre_content
-	  //     <<" "<<d_next_content
-	  //     <<endl;
 
 	  if(b_dydx0) v_iBin_dxdy0.push_back(d_center);
 	}//for(int iBin = 1; iBin < (h_dydx -> GetNbinsX()-1); iBin++)
 
+      // Draw Arrows where dy/dx = 0
       for(int jkl = 0; jkl < v_iBin_dxdy0.size(); jkl++)
 	{
 	  double d_center    = h_dydx -> GetBinCenter(v_iBin_dxdy0[jkl]);
@@ -339,16 +314,15 @@ void get_features()
 	  //	  if(jkl==0) TL_legend -> AddEntry(TL_dxdy0 ,"#frac{dy}{dx}=0");
 	  if(jkl==0) TL_legend -> AddEntry(TL_dxdy0 ,"dy/dx=0");
 
+	  // Draw the arrow on the main plot, down and over left so it can be seen
 	  if(b_draw_derivatives_on_main_plot)
 	    {
 	      TC_energy  -> cd();
 	      //TL_dxdy0 -> DrawArrow(d_center+1,d_Econtent-(d_Econtent*0.1),d_center+1,d_Econtent);
 	      TL_dxdy0 -> DrawArrow(d_center-1,d_Econtent-(d_Econtent*0.1),d_center-1,d_Econtent);
 	    }//if(b_draw_derivatives_on_main_plot)
-
 	  a_ptr_arrows.push_back(TL_dxdy0);
 	}//for(int jkl = 0; jkl < v_iBin_dxdy0.size(); jkl++)
-
       ////////////////////////////////////////////////
       /// END local dervatives
       ////////////////////////////////////////////////
@@ -356,34 +330,39 @@ void get_features()
       ////////////////////////////////////////////////
       /// /// local 2nd dervatives
       ////////////////////////////////////////////////
-      TH1D * h_d2ydx2 = new TH1D(Form("h_d2ydx2_%d",ijk),"d2ydx2",150,0,150);      
+      TH1D * h_d2ydx2 = new TH1D(Form("h_d2ydx2_%d",ijk),"d2ydx2",150,0,150);
+
+      // Loop over bins from right to left
       for(int iBin = iBin_adc_start; iBin > iBin_adc_end; iBin --)
 	{
+	  // Skip edges of histogram
 	  if((iBin <2)||(iBin > (h_dydx->GetNbinsX()+1)) ) continue;
 	  double dx = h_dydx -> GetBinWidth(1);
+
+	  // Calculate derivative
 	  double d_center  = h_dydx -> GetBinCenter(iBin);
 	  double d_content = h_dydx -> GetBinContent(iBin);
 
 	  double d_pre_content  = h_dydx -> GetBinContent(iBin-11);
 	  double d_next_content  = h_dydx -> GetBinContent(iBin+1);
 
-	  //	    double d2ydx2 = (d_next_content-d_pre_content) / (2*dx);
-	  //	    double d2ydx2 = (d_content-d_pre_content) / (dx);
+	  // Appears to work best just using the next bin over
 	  double d2ydx2 = (d_next_content-d_content) / (dx);
-	  // h_d2ydx2 -> Fill(d2ydx2);
 	  h_d2ydx2 -> SetBinContent(iBin,d2ydx2);	    
 	}//for(int iBin = iBin_adc_start; iBin > iBin_adc_end; iBin --)
 
+      // Draw Derivatives
       TCanvas * TC_d2ydx2 = new TCanvas(Form("TC_d2ydx2_%d",ijk),"TC_d2ydx2");
       TC_d2ydx2 -> cd();
       gPad->SetGridx(); gPad->SetGridy();
       h_d2ydx2 -> Smooth();
       h_d2ydx2 -> Draw("HIST");
 
-      // find d2ydx2 = 0
+      // find d2y/dx2 = 0
       vector<int> v_iBin_d2ydx2_0;
       for(int iBin = 1; iBin < (h_dydx -> GetNbinsX()-1); iBin++)
 	{
+	  // start assuming its not 0
 	  bool b_d2ydx2_0 = false;
 	  double d_center  = h_d2ydx2 -> GetBinCenter(iBin);
 	  double d_content = h_d2ydx2 -> GetBinContent(iBin);
@@ -391,6 +370,7 @@ void get_features()
 	  double d_pre_content  = h_d2ydx2 -> GetBinContent(iBin-1);
 	  double d_next_content  = h_d2ydx2 -> GetBinContent(iBin+1);  
 
+	  // Appears to work best if this bins is compared to the next bin
 	  if((d_content < 0) && (d_pre_content > 0)) b_d2ydx2_0 = true;
 	  if((d_content > 0) && (d_pre_content < 0)) b_d2ydx2_0 = true;
 
@@ -401,13 +381,10 @@ void get_features()
 	  // if((d_pre_content > 0) && (d_content < 0)) b_d2ydx2_0 = true;
 
 	  if(!b_d2ydx2_0) continue;
-	  // cout<<" d2ydx2_0: "<<d_pre_content
-	  //     <<" "<<d_next_content
-	  //     <<endl;
-
 	  if(b_d2ydx2_0) v_iBin_d2ydx2_0.push_back(d_center);
 	}//for(int iBin = 1; iBin < (h_d2ydx2 -> GetNbinsX()-1); iBin++)
 
+      // Draw Arrows where dy/dx = 0
       for(int jkl = 0; jkl < v_iBin_d2ydx2_0.size(); jkl++)
 	{
 	  double d_center    = h_d2ydx2 -> GetBinCenter(v_iBin_d2ydx2_0[jkl]);
@@ -437,29 +414,35 @@ void get_features()
       /// END local 2nd dervatives
       ////////////////////////////////////////////////
 
+      // Fill Feature Histograms
       h_minima   ->Fill(v_iBin_minima.size());
       h_maxima   ->Fill(v_iBin_maxima.size());
       h_dxdy0    ->Fill(v_iBin_dxdy0.size());
       h_d2ydx2_0 ->Fill(v_iBin_d2ydx2_0.size());
 
-      // cout<<" Num Minima: "<<v_iBin_minima.size()   <<endl;
-      // cout<<" Num Maxima: "<<v_iBin_maxima.size()   <<endl;
-      // cout<<" Num dydx:   "<<v_iBin_dxdy0.size()    <<endl;
-      // cout<<" Num d2ydx2: "<<v_iBin_d2ydx2_0.size() <<endl;
-
-
       TC_dydx   -> Close();
       TC_d2ydx2 -> Close();
 
+      // Write Out Features to text file for R
       //    Response: location of mpv
       // Vars:
       // xpos:    max 0, 1, 2, 3
+      //          min: 0, 1, 2, 3
       //          dydx 0, 1, 2, 3
       //          dy2dx 0, 1, 2, 3
       // dist: max_i from dydx
       //       max_i from d2ydx2
-      ///  OR ORDER?
-      // fit each max,dydx,d2ydx2 to landau and use chi2 as variable
+      
+      // First fill vectors with
+      // Vars:
+      // xpos:    min 0-4
+      //          max 0-4
+      //          dydx 0-6
+      //          dy2dx 0-14
+      // dist: min_i from dydx 0-6
+      //       min_i from d2ydx2 0-13
+      // dist: max_i from dydx 0-6
+      //       max_i from d2ydx2 0-13
 
       //output vectors
       vector<double> v_out_min;	  
@@ -524,6 +507,7 @@ void get_features()
       //write to output txt file
       if( ijk == 0)
 	{
+	  // write header
 	  for(int jkl = 0; jkl<v_out_min.size(); jkl++) ofs_out<<"Min"<<jkl<<" ";
 	  for(int jkl = 0; jkl<v_out_max.size(); jkl++) ofs_out<<"Max"<<jkl<<" ";
 	  for(int jkl = 0; jkl<v_out_dydx.size(); jkl++) ofs_out<<"dydx"<<jkl<<" ";
