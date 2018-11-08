@@ -109,7 +109,6 @@ void get_features()
       h_energy -> SetXTitle("Charged Deposited in Sensor");
       h_energy -> SetYTitle("Counts");
 
-
       //Get the Generating Function, for the training response
       TF1 * f1 = (TF1*) tf_in -> Get(Form("f1_%d",ijk));
 
@@ -126,7 +125,6 @@ void get_features()
       //            TLegend * TL_legend = new TLegend(0.55,0.525,0.85,0.935);
       //TL_legend -> AddEntry(h_energy,"SensorEnergy Deposition");
 
-
       //////////////////////////////////////////////////////////
       /////// Local Minima and Maxima
       //////////////////////////////////////////////////////////      
@@ -139,7 +137,6 @@ void get_features()
       double d_tmp_max = -9999.0;
       bool b_pos_slope = 0;
 
-      //record the maximum closest to 0
       int i_max0 = -9999;
       double d_max0_dist = -9999.0;
 
