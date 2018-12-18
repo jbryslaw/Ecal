@@ -1,7 +1,6 @@
 #find mpv
 
 all_data = read.table(file="out_all.txt",header=TRUE) #all_data = read.table(file="small_test_all.txt",header=TRUE)
-#integer response:
 attach(all_data)
 
 # SVM is in e1071 library
@@ -28,7 +27,7 @@ m_test  = cbind(Min0, Min1, Min2, Min3, Min4, Max0, Max1, Max2, Max3, Max4, dydx
 
 #  divided by 10
 v_train_response = MPV[1:10000]     
- v_test_response = MPV[10001:20000]
+v_test_response = MPV[10001:20000]
 
 # v_train_response = MPV[1:100000]     
 #  v_test_response = MPV[100001:200000]
