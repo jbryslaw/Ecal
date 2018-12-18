@@ -99,7 +99,7 @@ void find_mpv_NN()
   TMultiLayerPerceptron* TMLP_ecal_percept
     = new TMultiLayerPerceptron(ts_percept_def,t_traintest,"Entry$%2","(Entry$%2)==0");
 
-  // Train (epoch == 1back and forth trough all training 
+  // Train 
   TMLP_ecal_percept->Train(150,"graph update=10");
 
   // Analyze
