@@ -22,7 +22,7 @@ mpv, sig, amp = 30,5,100
 test_landau = [pylan.landau(np.array([d_ijk+0.0]),mpv=30,eta=5,A=10) for d_ijk in range(0,150)]
 #plt.plot(x_space,test_landau)
 #plt.hist(test_landau)
-print([d_ijk for d_ijk in x_space])
+#print([d_ijk for d_ijk in x_space])
 
 # Energy Deposition:
 # 9 parameter function Gaussian + Landau0 + Landa1(Landa0) + exp
@@ -57,7 +57,35 @@ par = [1.6e4,
 
 x_val = [ i+0.5 for i in range(0,150)]
 y_val = [ eval_E_deposit_func(x,par) for x in x_val]
-print(eval_E_deposit_func(23,par))
+#print(eval_E_deposit_func(23,par))
 # print(x_val)
 # print(y_val)
-plt.plot(x_val,y_val)
+b_plot = False
+if b_plot:
+    plt.semilogy(x_val,y_val)
+
+# randomly sample function
+
+
+# define histogram like object:
+class th1d_hist:
+    def __init__(self,i_nBins,x0,x1):
+        self.i_nBins = i_nBins
+        self.x0 = x0
+        self.x1 = x1
+
+        self.disp = x1-x0
+        self.binwidth = -9999.0
+        if i_nBins != 0:
+            self.binwidth = self.disp/(i_nBins*1.)
+
+        #self.a_hist = np.array([x0+(i*self.binwidth) for i in range(0,i_nBins)])
+        self.a_hist = np.zeros(i_nBins)
+
+    def get_hist_array(self):
+        return self.a_hist
+
+    def Fill(self,x=0.,w=1.):
+        i_bin = np.floor(x/self.binwidth).astype(int)
+        self.a_hist[i_bin] += w
+        
