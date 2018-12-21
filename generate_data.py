@@ -105,9 +105,9 @@ i_Nsamples = 100000
 i_N_itr = 200000;
 
 #limit for testing
-i_Nsamples = 100000
-i_Nsamples = 10
-i_N_itr = 10
+# i_Nsamples = 100000
+# i_Nsamples = 10
+# i_N_itr = 10
 
 histos = []
 
