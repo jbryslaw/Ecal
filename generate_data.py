@@ -9,6 +9,13 @@ import seaborn as sns
 import warnings; warnings.filterwarnings(action='once')
 from scipy import stats as scipystats
 
+#################
+# Switches
+b_plot = False #True
+b_savetxt = False
+b_saveplk = True
+#################
+
 #needed for defining landau distributions --> use scipy.stats.moyal instead
 #import pylandau as pylan #pip install pylandau
 
@@ -45,23 +52,13 @@ class th1d_hist:
         return self.a_hist[i_bin]
 
     def FindBin(self,x):
-        print(" - ", x," - ",self.binwidth," - ", np.floor(x/self.binwidth), " - ", np.floor(x/self.binwidth).astype(int) )
         return np.floor(x/self.binwidth).astype(int)
 
 #class th1d_hist:
 #####################################################################
 
 #define a linspace for the ADC distributions
-x_space = np.linspace(0,150,150)
-mpv, sig, amp = 30,5,100
-#test_landau = pylan.landau(x_space,mpv = mpv, eta=sig, A=amp)
-#test_landau = [pylan.get_landau(d_ijk,mpv=mpv,eta=sig,A=amp) for d_ijk in x_space]
-#test_landau = [pylan.get_landau(d_ijk,mpv=30,eta=5,A=10) for d_ijk in range(0,150)]
-#test_landau = [pylan.landau(np.arange(d_ijk,d_ijk+1.,1),mpv=30,eta=5,A=10) for d_ijk in range(0,150)]
-#test_landau = [pylan.landau(np.array([d_ijk+0.0]),mpv=30,eta=5,A=10) for d_ijk in range(0,150)]
-#plt.plot(x_space,test_landau)
-#plt.hist(test_landau)
-#print([d_ijk for d_ijk in x_space])
+x_val = [ i+0.5 for i in range(0,150)]
 
 #####################################################################
 # Energy Deposition:
@@ -70,12 +67,6 @@ def eval_E_deposit_func(x,par):
     x = x*1.
     if len(par) != 9:
         return 0.
-
-    #first Landau:
-    #la0 = par[3]*pylan.get_landau(x,par[1],par[2],A=1) # get_landau function doesn't seem to return the proper mpv
-    #use the "full" distribution with one x entry instead
-    # la0 = par[3]*pylan.landau(np.array([x]),mpv = par[1], eta = par[2])
-    # la1 = (1.-par[3])*pylan.landau(np.array([x]),mpv = 2*par[1]+1.4*par[2],eta = 2.*par[2])
     
     # can use moyal distributrion from scipy.stats to approximate landau, it is much faster
     la0 = par[3]*scipystats.moyal.pdf(x,loc=par[1],scale=par[2])
@@ -106,21 +97,7 @@ par_hi = [8.8e5,
           10,
           15]
 
-
-x_val = [ i+0.5 for i in range(0,150)]
-#y_val = [ eval_E_deposit_func(x,par) for x in x_val]
-#print(eval_E_deposit_func(23,par))
-# print(x_val)
-# print(y_val)
-b_plot = False
-if b_plot:
-    plt.semilogy(x_val,y_val)
-
-
 np.random.seed(0)
-    
-# plt.semilogy(x_val,h1.get_hist_array())
-#plt.plot(x_val,h1.get_hist_array())
 
 #Generate 100000 training and test histograms
 x_max = 150.
@@ -129,16 +106,25 @@ i_N_itr = 200000;
 
 #limit for testing
 i_Nsamples = 100000
+i_Nsamples = 10
 i_N_itr = 10
 
 histos = []
 
+
 # save fit parameters for fit
 # and histogram bins for data
+l_columns = [f"p{i}"  for i in range(0,9)]
+l_bins_columns = [f"b{i}"  for i in range(0,150)]
+
+l_columns.extend(l_bins_columns)
+
+#df_total = pd.DataFrame(columns=l_columns)
 for ijk in range(0,i_N_itr):
     #get a random set of parameters
     par=[np.random.rand()*(par_hi[jkl]-par_low[jkl])+par_low[jkl] for jkl in range(0,len(par_low))]
-
+    a_par = np.array(par)
+            
     # randomly sample function
     h1 = th1d_hist(150,0.,150.)
     for jkl in range(0,i_Nsamples):
@@ -147,6 +133,10 @@ for ijk in range(0,i_N_itr):
         weight  = eval_E_deposit_func(xsample,par)
         h1.Fill(xsample,weight)
     #for jkl in range(0,i_Nsamples):
+
+    #fill random for testing
+    # for jkl in range(0,10000):
+    #     h1.Fill(np.floor(np.random.rand()*150).astype(int),np.random.rand() )
 
     if i_Nsamples != 0. :
         h1.Scale(1./(i_Nsamples*1.))
@@ -161,11 +151,32 @@ for ijk in range(0,i_N_itr):
 
     for jkl in range(0,zs_rightbin):
         h1.SetBinContent(jkl,d_old_bincontent*np.power(10,-1*zs_strength))
-        print(" - ",jkl," ",d_old_bincontent*np.power(10,-1*zs_strength))
-
+        
     histos.append(h1)
-#for ijk in range(0,i_N_itr)
 
-for ijk in histos:
-    plt.figure()
-    plt.semilogy(x_val,ijk.get_hist_array())
+    #save fit parameters and bin content to dataframe
+    parbin_out = par
+    ls_content = [h1.GetBinContent(ijk) for ijk in range(0,150)]
+    parbin_out.extend(ls_content)
+    if ijk == 0:    
+        #df_total = pd.DataFrame(a_par,columns=l_columns)
+        df_total = pd.DataFrame([parbin_out],columns = l_columns)
+    else:
+        df0 = pd.DataFrame([parbin_out],columns=l_columns)
+        df_total =  pd.concat([df_total,df0], ignore_index=True)
+
+
+#for ijk in range(0,i_N_itr)
+print(df_total)
+
+# plot all histograms
+if b_plot:
+    for ijk in histos:
+        plt.figure()
+        plt.semilogy(x_val,ijk.get_hist_array())
+#if b_plot:
+
+#save as pickle
+if b_saveplk:
+    df_total.to_pickle("all_data.plk")
+
