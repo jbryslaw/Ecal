@@ -14,10 +14,11 @@ b_draw = True
 #####################################################################
 # define histogram like object:
 class th1d_hist:
-    def __init__(self,i_nBins,x0,x1):
+    def __init__(self,i_nBins,x0,x1,title):
         self.i_nBins = i_nBins
         self.x0 = x0
         self.x1 = x1
+        self.title = title
 
         self.disp = x1-x0
         self.binwidth = -9999.0
@@ -27,6 +28,7 @@ class th1d_hist:
         #self.a_hist = np.array([x0+(i*self.binwidth) for i in range(0,i_nBins)])
         self.a_hist = np.zeros(i_nBins)
         self.a_err  = np.zeros(i_nBins)
+        self.x_val  = np.arange(self.x0,self.x1,self.binwidth)
 
     def get_hist_array(self):
         return self.a_hist
@@ -54,8 +56,23 @@ class th1d_hist:
         a_dsq = np.zeros(self.i_nBins)
         a_dsq = np.sqrt(self.a_hist*d_norm)
         self.a_err = np.true_divide(a_ones,a_dsq,out=np.zeros_like(a_ones),where=(a_dsq!=0.))
-        for ijk in range(0,self.i_nBins):
-             print(self.a_hist[ijk]*d_norm," : ",self.a_err[ijk])
+
+    # read in histogram values directly
+    # assumes source has same number of entries as histogram has bins
+    def read(self,v_in):
+        ix = 0
+        for w in v_in:            
+            h1.SetBinContent(ix,w)
+            ix+=1
+
+    def get_xarray(self):
+        return self.x_val
+
+    # Draw
+    def Draw(self):
+        half_binwidth = self.binwidth/2.
+        x_draw = np.arange(self.x0+half_binwidth,self.x1+half_binwidth,self.binwidth)
+        plt.errorbar(x_draw,self.a_hist,yerr=self.a_err,fmt='o',  markersize=2, color='k', label = self.title)
         
 #class th1d_hist:
 #####################################################################
@@ -75,15 +92,17 @@ print(df_total.shape)
 # for ijk in range(0,i_N_histos):
 
 # get histogram bins
-this_hist = df_total.iloc[0,9:158]
-h1 = th1d_hist(150,0.,150.)
-ix = 0
-for w in this_hist:
-    ix+=1
-    h1.Fill(x_val[ix],w)
-
+this_hist = df_total.iloc[0,9:159]
+h1 = th1d_hist(150,0.,150.,"hist0")
+h1.read(this_hist)
 h1.set_poisson_err(10000)
 
+# Draw
+
+h1.Draw()
+
+# print(this_hist.shape)
+# print(this_hist)
 
 # h1.Fill(x_val,this_hist)
     
