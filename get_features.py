@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings; warnings.filterwarnings(action='once')
 from scipy import stats as scipystats
+import pylab
 
 #########################
 #  switches
-b_draw = True
+b_draw = True #False
 #########################
 
 #####################################################################
@@ -49,6 +50,12 @@ class th1d_hist:
     def FindBin(self,x):
         return np.floor(x/self.binwidth).astype(int)
 
+    def GetBinCenter(self,i_bin):
+        return self.x_val[i_bin]
+
+    def GetNbins(self):
+        return len(self.a_hist)
+
     #set histogram poisson errors
     def set_poisson_err(self,d_norm):
         a_ones = np.ones(self.i_nBins)
@@ -62,7 +69,7 @@ class th1d_hist:
     def read(self,v_in):
         ix = 0
         for w in v_in:            
-            h1.SetBinContent(ix,w)
+            self.SetBinContent(ix,w)
             ix+=1
 
     def get_xarray(self):
@@ -85,28 +92,96 @@ df_total = pd.read_pickle("all_data.plk")
 
 print(" shape all data: ")
 print(df_total.shape)
+i_N_rows = df_total.shape[0]
 
-# Number of historgrams to read
-# int i_N_histos = 1000
+i_max_rows = 6
+i_start = 3
 
-# for ijk in range(0,i_N_histos):
+for ijk in range(i_start, i_N_rows):
+    print(" ------ ",f'hist_{ijk}')
+    if(ijk >= i_max_rows):
+        break;
 
-# get histogram bins
-this_hist = df_total.iloc[0,9:159]
-h1 = th1d_hist(150,0.,150.,"hist0")
-h1.read(this_hist)
-h1.set_poisson_err(10000)
+    # get histogram bins
+    this_hist = df_total.iloc[ijk,9:159]
+    h_energy = th1d_hist(150,0.,150.,f'hist_{ijk}')
+    h_energy.read(this_hist)
+    h_energy.set_poisson_err(100000)
 
-# Draw
+    # Draw
+    if b_draw:
+        plt.figure(figsize=(16,10),dpi=80)
+        ax = plt.subplot(111)
+        ax.set_yscale("log")
+        h_energy.Draw()
+    #if b_draw:
 
-h1.Draw()
-
-# print(this_hist.shape)
-# print(this_hist)
-
-# h1.Fill(x_val,this_hist)
+    # Local Minima and Maxima
+    v_iBin_minima = list()
+    v_iBin_maxima = list()
     
+    # loop over bins
+    for iBin in range(0,h_energy.GetNbins()):
+        d_center  = h_energy.GetBinCenter(iBin)
+        d_content = h_energy.GetBinContent(iBin)
 
-# plt.figure(figsize=(16,10),dpi=80)
-# #plt.scatter(this_hist.index,this_hist)
-# #plt.errorbar(x_val,this_hist,
+        #Define Max, Min as 5 bins lower, higher on either side
+        #  so statistical fluctuations aren't set as max,min
+        a5_pre_content  = [0.,0.,0.,0.,0.]
+        a5_post_content = [0.,0.,0.,0.,0.]
+
+        b_min = True
+        b_max = True
+        i_num_check = 5
+        
+        for jkl in range(0,i_num_check):
+            #just check that bin isn't near the very edges of the histogram
+            if (iBin-1-jkl) > 0:
+                a5_pre_content[jkl] = h_energy.GetBinContent(iBin-1-jkl)
+            else:
+                b_min = False
+                b_max = False
+            if (iBin+1+jkl) < h_energy.GetNbins():
+                a5_post_content[jkl] = h_energy.GetBinContent(iBin+1+jkl)
+            else:
+                b_min = False
+                b_max = False
+
+            if(a5_pre_content[jkl] < d_content): b_min = False
+            if(a5_pre_content[jkl] > d_content): b_max = False
+            if(a5_post_content[jkl] < d_content): b_min = False
+            if(a5_post_content[jkl] > d_content): b_max = False
+
+            #if the bins right nextdoor are the same, let it go
+            if(jkl==0): continue
+            if(a5_pre_content[jkl]  == d_content): b_max = False
+            if(a5_post_content[jkl] == d_content): b_min = False
+        #for jkl in range(0,i_num_check):
+
+        #add maxima, minima to vectors
+        if(b_max):
+            v_iBin_maxima.append(iBin)
+                
+        if(b_min):
+            v_iBin_minima.append(iBin)
+    #for iBin in range(0,h_energy.GetNbins()):
+
+    #draw arrows at minima nad maxima
+    print("Minima:")
+    for jkl in range(0,len(v_iBin_minima)):
+        print(v_iBin_minima[jkl])
+        d_center  = h_energy.GetBinCenter(v_iBin_minima[jkl])
+        d_content = h_energy.GetBinContent(v_iBin_minima[jkl])
+        #pylab.arrow(d_center,d_content-(d_content*0.1),0.0,(d_content*0.1),fc="b",ec="b",head_width=0.1, head_length=d_content )
+        plt.annotate('',xy=(d_center,d_content),xytext=(d_center,d_content-(d_content*0.1)),arrowprops=dict(facecolor='blue',shrink=0.))
+
+    print("Maxima:")
+    for jkl in range(0,len(v_iBin_maxima)):
+        print(v_iBin_maxima[jkl])
+        d_center  = h_energy.GetBinCenter(v_iBin_maxima[jkl])
+        d_content = h_energy.GetBinContent(v_iBin_maxima[jkl])
+        #pylab.arrow(d_center,d_content-(d_content*0.1),0.0,(d_content*0.1),fc="b",ec="b",head_width=0.1, head_length=d_content )
+        plt.annotate('',xy=(d_center,d_content),xytext=(d_center,d_content-(d_content*0.1)),arrowprops=dict(facecolor='red',shrink=0.))
+
+
+#for ijk in range(0, i_N_rows):
