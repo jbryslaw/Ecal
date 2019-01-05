@@ -9,13 +9,14 @@ import pylab
 
 #########################
 #  switches
-b_draw = True #False
+b_draw             = True #False
+b_draw_derivatives = True #False
 #########################
 
 #####################################################################
 # define histogram like object:
 class th1d_hist:
-    def __init__(self,i_nBins,x0,x1,title):
+    def __init__(self,i_nBins,x0,x1,title="title"):
         self.i_nBins = i_nBins
         self.x0 = x0
         self.x1 = x1
@@ -56,6 +57,9 @@ class th1d_hist:
     def GetNbins(self):
         return len(self.a_hist)
 
+    def GetBinWidth(self):
+        return self.binwidth
+
     #set histogram poisson errors
     def set_poisson_err(self,d_norm):
         a_ones = np.ones(self.i_nBins)
@@ -94,13 +98,13 @@ print(" shape all data: ")
 print(df_total.shape)
 i_N_rows = df_total.shape[0]
 
-i_max_rows = 6
-i_start = 3
+i_max_rows = 3
+i_start = 0
 
 for ijk in range(i_start, i_N_rows):
     print(" ------ ",f'hist_{ijk}')
     if(ijk >= i_max_rows):
-        break;
+        break
 
     # get histogram bins
     this_hist = df_total.iloc[ijk,9:159]
@@ -116,6 +120,7 @@ for ijk in range(i_start, i_N_rows):
         h_energy.Draw()
     #if b_draw:
 
+    #--------------------------------------------
     # Local Minima and Maxima
     v_iBin_minima = list()
     v_iBin_maxima = list()
@@ -183,5 +188,60 @@ for ijk in range(i_start, i_N_rows):
         #pylab.arrow(d_center,d_content-(d_content*0.1),0.0,(d_content*0.1),fc="b",ec="b",head_width=0.1, head_length=d_content )
         plt.annotate('',xy=(d_center,d_content),xytext=(d_center,d_content-(d_content*0.1)),arrowprops=dict(facecolor='red',shrink=0.))
 
+    # END Local Minima and Maxima
+    #--------------------------------------------
+
+    #--------------------------------------------
+    #       Local Derivatives
+
+    #first find all derivatives and save to a histogram
+    h_dydx = th1d_hist(150,0,150)
+    # loop over bins
+    for iBin in range(0,h_energy.GetNbins()-1):
+        # Skip edges of histogram
+        if((iBin < 1) or (iBin > h_energy.GetNbins())):
+            continue
+
+        dx        = h_energy.GetBinWidth()
+        if(dx==0):
+            continue
+        d_center  = h_energy.GetBinCenter(iBin)
+        d_content = h_energy.GetBinContent(iBin)
+
+        d_pre_content  = h_energy.GetBinContent(iBin-1)
+        d_next_content = h_energy.GetBinContent(iBin+1)
+
+        dydx = (d_next_content - d_pre_content) /dx
+        h_dydx.SetBinContent(iBin,dydx)
+    #for iBin in range(0,h_energy.GetNbins()):
+
+    if(b_draw_derivatives):
+        plt.figure(figsize=(16,10),dpi=80)
+        h_dydx.Draw()
+
+    #find dy/dx = 0
+    v_iBin_dxdy0 = list()
+    for iBin in range(1,h_dydx.GetNbins()-1):
+        #start assynung dydx != 0
+        b_dydx0 = False
+
+        d_center  = h_dydx.GetBinCenter(iBin)
+        d_content = h_dydx.GetBinContent(iBin)
+        d_pre_content  = h_dydx.GetBinContent(iBin-1)
+        d_next_content = h_dydx.GetBinContent(iBin+1)
+
+        if((d_content < 0) and (d_pre_content > 0)): b_dydx0 = True
+        if((d_content > 0) and (d_pre_content < 0)): b_dydx0 = True
+
+        if(not b_dydx0): continue
+        v_iBin_dxdy0.append(iBin)
+
+        #Draw arrows
+        # assuming h_energy and h_dydx have
+        #     the same number of bins
+        plt.annotate('',xy=(d_center,d_content),xytext=(d_center,d_content-(d_content*0.1)),arrowprops=dict(facecolor='green',shrink=0.))
+        
+    #   END Local Derivatives
+    #--------------------------------------------
 
 #for ijk in range(0, i_N_rows):
