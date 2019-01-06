@@ -10,7 +10,7 @@ import pylab
 #########################
 #  switches
 b_draw             = True #False
-b_draw_derivatives = True #False
+b_draw_derivatives = False #True #False
 #########################
 
 #####################################################################
@@ -222,7 +222,7 @@ for ijk in range(i_start, i_N_rows):
     #find dy/dx = 0
     v_iBin_dxdy0 = list()
     for iBin in range(1,h_dydx.GetNbins()-1):
-        #start assynung dydx != 0
+        #start assuming dydx != 0
         b_dydx0 = False
 
         d_center  = h_dydx.GetBinCenter(iBin)
@@ -243,5 +243,42 @@ for ijk in range(i_start, i_N_rows):
         
     #   END Local Derivatives
     #--------------------------------------------
+
+    #--------------------------------------------
+    #       Local 2nd Derivatives
+    #first find all 2nd derivatives and save to a histogram
+    h_d2ydx2 = th1d_hist(150,0,150)
+
+    #loop over bins in the 1st derivative histogram
+    for iBin in range(0,h_dydx.GetNbins()-1):
+        # Skip edges of histogram
+        if((iBin < 1) or (iBin > h_dydx.GetNbins())):
+            continue
+
+        dx        = h_dydx.GetBinWidth()
+        if(dx==0):
+            continue
+        d_center  = h_dydx.GetBinCenter(iBin)
+        d_content = h_dydx.GetBinContent(iBin)
+
+        d_pre_content  = h_dydx.GetBinContent(iBin-1)
+        d_next_content = h_dydx.GetBinContent(iBin+1)
+
+        dydx = (d_next_content - d_pre_content) /dx
+        h_d2ydx2.SetBinContent(iBin,dydx)
+    #for iBin in range(0,h_dydx.GetNbins()):
+
+    #find d2y/dx2 = 0
+    v_iBin_d2ydx2_0 = list()
+    for iBin in range(1,h_d2ydx2.GetNbins()-1):
+        # start assuming d2y/dx2 != 0
+        b_d2ydx2_0 = False
+        
+    
+    
+    #   END Local 2nd Derivatives
+    #--------------------------------------------
+
+
 
 #for ijk in range(0, i_N_rows):
