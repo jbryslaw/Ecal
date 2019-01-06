@@ -10,7 +10,7 @@ import pylab
 #########################
 #  switches
 b_draw             = True #False
-b_draw_derivatives = False #True #False
+b_draw_derivatives = True #False #True #False
 #########################
 
 #####################################################################
@@ -98,7 +98,7 @@ print(" shape all data: ")
 print(df_total.shape)
 i_N_rows = df_total.shape[0]
 
-i_max_rows = 3
+i_max_rows = 2
 i_start = 0
 
 for ijk in range(i_start, i_N_rows):
@@ -268,14 +268,34 @@ for ijk in range(i_start, i_N_rows):
         h_d2ydx2.SetBinContent(iBin,dydx)
     #for iBin in range(0,h_dydx.GetNbins()):
 
+    if(b_draw_derivatives):
+        plt.figure(figsize=(16,10),dpi=80)
+        h_d2ydx2.Draw()
+
     #find d2y/dx2 = 0
     v_iBin_d2ydx2_0 = list()
     for iBin in range(1,h_d2ydx2.GetNbins()-1):
         # start assuming d2y/dx2 != 0
         b_d2ydx2_0 = False
+        d_center  = h_d2ydx2.GetBinCenter(iBin)
+        d_content = h_d2ydx2.GetBinContent(iBin)
+
+        d_pre_content   = h_d2ydx2.GetBinContent(iBin-1)
+        d_next_content  = h_d2ydx2.GetBinContent(iBin-1)
+
+        #Appears to work best if this bins is compared to the next bin
+        if((d_content < 0) and (d_pre_content > 0)): b_d2ydx2_0 = True
+        if((d_content > 0) and (d_pre_content < 0)): b_d2ydx2_0 = True
+
+        if(not b_d2ydx2_0): continue
+        v_iBin_d2ydx2_0.append(iBin)
+
+        #Draw arrows
+        # assuming h_energy and h_dydx have
+        #     the same number of bins
+        plt.annotate('',xy=(d_center,d_content),xytext=(d_center,d_content-(d_content*0.1)),arrowprops=dict(facecolor='black',shrink=0.))
+
         
-    
-    
     #   END Local 2nd Derivatives
     #--------------------------------------------
 
