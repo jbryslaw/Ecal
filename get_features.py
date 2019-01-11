@@ -11,6 +11,7 @@ import pylab
 #  switches
 b_draw             = True #False
 b_draw_derivatives = True #False #True #False
+b_saveplk          = True
 #########################
 
 #####################################################################
@@ -271,6 +272,7 @@ for ijk in range(i_start, i_N_rows):
     if(b_draw_derivatives):
         plt.figure(figsize=(16,10),dpi=80)
         h_d2ydx2.Draw()
+    #if(b_draw_derivatives):
 
     #find d2y/dx2 = 0
     v_iBin_d2ydx2_0 = list()
@@ -294,11 +296,87 @@ for ijk in range(i_start, i_N_rows):
         # assuming h_energy and h_dydx have
         #     the same number of bins
         plt.annotate('',xy=(d_center,d_content),xytext=(d_center,d_content-(d_content*0.1)),arrowprops=dict(facecolor='black',shrink=0.))
+    #for iBin in range(1,h_d2ydx2.GetNbins()-1):
 
         
     #   END Local 2nd Derivatives
     #--------------------------------------------
 
+    # pad outputs to make a static number of columns
+    if len(v_iBin_minima)< 5:
+        for jkl in range(len(v_iBin_minima)-1,5):
+            v_iBin_minima.append(-9999)
+    if len(v_iBin_maxima)< 5:
+        for jkl in range(len(v_iBin_maxima)-1,5):
+            v_iBin_maxima.append(-9999)
+    if len(v_iBin_dxdy0) < 7:
+        for jkl in range(len(v_iBin_dxdy0)-1,7):
+            v_iBin_dxdy0.append(-9999)
+    if len(v_iBin_d2ydx2_0) < 7:
+        for jkl in range(len(v_iBin_d2ydx2_0)-1,14):
+            v_iBin_d2ydx2_0.append(-9999)
+    
+    ls_output = v_iBin_minima[0:5]
+    ls_output.extend(v_iBin_maxima[0:5])
 
+    #only actually need 0-4
+    ls_output.extend(v_iBin_dxdy0[0:5])
+    #only actually need 0-6
+    ls_output.extend(v_iBin_d2ydx2_0[0:7])
 
+    print("dxdy0:")
+    print(v_iBin_dxdy0[0:5])
+    print("d2ydx2:")
+    print(v_iBin_d2ydx2_0[0:7])
+
+    # for ML mpv finding, distance between derivatives
+    #   was actually not used    
+    # v_dist_min_dxdy0 = list()
+    # print(" dist min dxdy0")
+    # for jkl in range(0,5):#min,max
+    #     for klm in range(0,7):#dxdy0
+    #         if((v_iBin_minima[jkl] == -9999) or (v_iBin_dxdy0[klm] == -9999)):
+    #             print(jkl*7+klm,":",-9999)
+    #             v_dist_min_dxdy0.append(-9999)
+    #         else:
+    #             print(jkl*7+klm,":",v_iBin_minima[jkl] - v_iBin_dxdy0[klm])
+    #             v_dist_min_dxdy0.append(v_iBin_minima[jkl] - v_iBin_dxdy0[klm])
+                
+    #     #for klm in range(0,14):         
+    # #for jkl in range(0,15):
+    # #    ls_output.extend(v_dist_min_dxdy0)
+    # v_dist_min_d2ydx2 = list()
+    # print(" dist min dy2dx2")
+    # for jkl in range(0,5):#min,max
+    #     for klm in range(0,14):#dy2dx2
+    #         if((v_iBin_minima[jkl] == -9999) or (v_iBin_d2ydx2_0[klm] == -9999)):
+    #             #print(jkl*15+klm,":",-9999)
+    #             v_dist_min_d2ydx2.append(-9999)
+    #             continue
+    #         #print(jkl*15+klm,":",v_iBin_minima[jkl] - v_iBin_d2ydx2_0[klm])
+    #         v_dist_min_d2ydx2.append(v_iBin_minima[jkl] - v_iBin_d2ydx2_0[klm])
+    #     #for klm in range(0,14):         
+    # #for jkl in range(0,15):
+    # #    ls_output.extend(v_dist_min_d2ydx2)
+    
+    # for jkl in range(0,5):
+    #      output.extend(v_iBin_minima[ijk])
+    print("output")
+    print(ls_output)
+    print("length: ",len(ls_output))
+
+    df_row = pd.DataFrame([ls_output])
+
+    if ijk==0:
+        df_out = pd.DataFrame([ls_output])
+    else:
+        df_out = pd.concat([df_out,df_row], ignore_index=True)
+    
 #for ijk in range(0, i_N_rows):
+
+print("output df:")
+print(df_out)
+
+#save as pickle
+if b_saveplk:
+    df_out.to_pickle("all_features.plk")
