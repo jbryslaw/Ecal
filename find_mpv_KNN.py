@@ -17,8 +17,8 @@ i_halfpt = np.floor(len(df_total)/2.).astype(int)
 print(df_total.shape)
 print(i_halfpt)
 
-df_train = df_total.iloc[0:i_halfpt]
-df_test  = df_total.iloc[i_halfpt:len(df_total)]
+#df_train = df_total.iloc[0:i_halfpt]
+#df_test  = df_total.iloc[i_halfpt:len(df_total)]
 x_train  = df_total.iloc[0:i_halfpt,0:15]
 x_test   = df_total.iloc[i_halfpt:len(df_total),0:15]
 y_train  = df_total.iloc[0:i_halfpt,22]
